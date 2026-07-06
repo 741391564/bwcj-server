@@ -1,86 +1,91 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import os
-import time
-from urllib.parse import urlparse, parse_qs
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlparse
 
-def success_response():
+
+def make_success_response():
+    expire_unix = 4070880000
+    token = "ultimate-token-2099"
+
     return {
-        "code": 0,
+        "code": 1,
         "status": 1,
-        "ret": 0,
-        "msg": "success",
-        "message": "success",
+        "ret": 1,
         "success": True,
 
-        "accessToken": "ultimate-token-2099",
-        "token": "ultimate-token-2099",
-        "tokenExpireUnix": 2783326459,
+        "msg": "登录成功，到期时间：2099-12-31 23:59",
+        "message": "登录成功，到期时间：2099-12-31 23:59",
 
-        "endtime": "2099-12-31",
-        "expire": "2099-12-31",
-        "roomCode": "0000",
-        "udid": "*",
+        "token": token,
+        "accessToken": token,
+        "tokenExpireUnix": expire_unix,
 
         "data": {
-            "endtime": "2099-12-31",
-            "token": "ultimate-token-2099",
-            "accessToken": "ultimate-token-2099",
-            "tokenExpireUnix": 2783326459,
-            "roomCode": "0000",
-            "udid": "*",
-            "expire": "2099-12-31",
-            "features": {
-                "esp": True,
-                "radar": True,
-                "allMaps": True,
-                "enabled": True
-            }
+            "endtime": expire_unix,
+            "expire": expire_unix,
+            "token": token,
+            "accessToken": token,
+            "kami": "ABC123",
+            "vip": 1,
+            "status": 1
         }
     }
 
+
 class Handler(BaseHTTPRequestHandler):
-    def _handle(self):
-        parsed = urlparse(self.path)
-        length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(length).decode("utf-8", errors="ignore") if length > 0 else ""
+    def log_message(self, format, *args):
+        return
 
-        print("========== APP REQUEST ==========", flush=True)
-        print("TIME:", time.strftime("%Y-%m-%d %H:%M:%S"), flush=True)
-        print("METHOD:", self.command, flush=True)
-        print("PATH:", parsed.path, flush=True)
-        print("QUERY:", parse_qs(parsed.query), flush=True)
-        print("HEADERS:", dict(self.headers), flush=True)
-        print("BODY:", body, flush=True)
-        print("=================================", flush=True)
+    def _send_json(self, obj, status=200):
+        body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
 
-        data = json.dumps(success_response(), ensure_ascii=False).encode("utf-8")
-
-        self.send_response(200)
+        self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(data)
-
-    def do_GET(self):
-        self._handle()
-
-    def do_POST(self):
-        self._handle()
-
-    def do_PUT(self):
-        self._handle()
-
-    def do_DELETE(self):
-        self._handle()
+        self.wfile.write(body)
 
     def do_OPTIONS(self):
-        self._handle()
+        self._send_json({"ok": True})
+
+    def do_GET(self):
+        parsed = urlparse(self.path)
+
+        print("========== APP GET ==========", flush=True)
+        print("PATH:", parsed.path, flush=True)
+
+        self._send_json({
+            "ok": True,
+            "server": "bwcj-server",
+            "message": "server running",
+            "code": 1
+        })
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        raw_body = self.rfile.read(length)
+
+        try:
+            body_text = raw_body.decode("utf-8", errors="ignore")
+        except Exception:
+            body_text = str(raw_body)
+
+        print("========== APP REQUEST ==========", flush=True)
+        print("METHOD: POST", flush=True)
+        print("PATH:", parsed.path, flush=True)
+        print("HEADERS:", dict(self.headers), flush=True)
+        print("BODY:", body_text, flush=True)
+        print("========== RESPONSE SUCCESS ==========", flush=True)
+
+        self._send_json(make_success_response())
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "10000"))
-    print("server running on port", port, flush=True)
+    print(f"Server started on port {port}", flush=True)
     HTTPServer(("0.0.0.0", port), Handler).serve_forever()
