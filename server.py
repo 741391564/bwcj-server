@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""霸王茶姬 假服务器 v2 - Render 部署版"""
+"""霸王茶姬 假服务器 v3 ULTIMATE — 适配所有已知API路径"""
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import json, os
+import json, os, time
 
 class FakeServer(BaseHTTPRequestHandler):
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "*")
         self.send_header("Access-Control-Allow-Headers", "*")
 
-    def _ok(self, body):
-        self.send_response(200)
+    def _json(self, code, body):
+        self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self._cors()
         self.end_headers()
@@ -29,39 +29,56 @@ class FakeServer(BaseHTTPRequestHandler):
 
     def _handle(self):
         path = self.path
-        length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(length) if length else b""
-        print(f"[{self.command}] {path} body={body[:500]}")
+        cl = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(cl) if cl else b""
+        print(f"\n{'='*50}")
+        print(f"[{self.command}] {path}")
+        print(f"Headers: {dict(self.headers)}")
+        print(f"Body: {body[:1000]}")
+        print(f"{'='*50}\n")
 
-        # 返回多种格式，覆盖各种可能的解析方式
+        # 核心响应——覆盖所有可能的成功格式
+        now = int(time.time())
         resp = {
-            "code": 1,           # 常见成功码
-            "status": 1,         # 另一种常见格式
-            "ret": 0,            # 又一种格式 (0=成功)
+            # 格式1: code=0表示成功（中文App常用）
+            "code": 0,
+            # 格式2: status字段  
+            "status": 1,
+            # 格式3: ret字段
+            "ret": 0,
             "msg": "success",
-            "message": "ok",
+            "message": "success",
+            # 核心数据
+            "accessToken": "ultimate-token-2099",
+            "token": "ultimate-token-2099",
+            "tokenExpireUnix": now + 999999999,
+            "endtime": "2099-12-31",
+            "expire": "2099-12-31",
+            "roomCode": "0000",
+            "udid": "*",
             "data": {
                 "endtime": "2099-12-31",
-                "token": "faketoken-2099",
-                "accessToken": "faketoken-2099",
-                "tokenExpireUnix": 4102444800,  # 2099年
+                "token": "ultimate-token-2099",
+                "accessToken": "ultimate-token-2099",
+                "tokenExpireUnix": now + 999999999,
                 "roomCode": "0000",
                 "udid": "*",
                 "expire": "2099-12-31",
                 "features": {
                     "esp": True,
-                    "radar": True,
-                    "allMaps": True
+                    "radar": True, 
+                    "allMaps": True,
+                    "enabled": True
                 }
             }
         }
-        self._ok(resp)
+        self._json(200, resp)
 
-    def log_message(self, format, *args):
-        print(f"[{self.log_date_time_string()}] {args[0]}")
+    def log_message(self, fmt, *args):
+        pass  # 用自己的print
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8899))
     server = HTTPServer(("0.0.0.0", port), FakeServer)
-    print(f"假服 v2 → 0.0.0.0:{port}")
+    print(f"ULTIMATE 假服 v3 → 0.0.0.0:{port}")
     server.serve_forever()
