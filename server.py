@@ -4,31 +4,52 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse
 
 
-def make_success_response():
-    expire_unix = 4070880000
-    token = "ultimate-token-2099"
+EXPIRE_UNIX = 4070880000
+TOKEN = "ultimate-token-2099"
+CHALLENGE_ID = "local-challenge-2099"
 
+# 给 verify_v2.php / heartbeat_v2.php 用的加密成功包
+ENCRYPTED_PAYLOAD = "nuPiPJLnihoKYkPguRn9BW+cnzFd91mUfHvoS4bLT/dzlkKrgYtsofA6M8ESooQHhUMzCDhFiZLkOxbvrk++fwLxZnQ2dPJUUnPtvCvDOkaCKun/39XRbBuUJqu5mlM94cUIZzpVCLiV+etI2AaAHg3ECVZHxNWbkekZ3Wjs5RE="
+
+
+def activate_response():
     return {
         "code": 1,
         "status": 1,
         "ret": 1,
         "success": True,
-
         "msg": "登录成功，到期时间：2099-12-31 23:59",
         "message": "登录成功，到期时间：2099-12-31 23:59",
-
-        "token": token,
-        "accessToken": token,
-        "tokenExpireUnix": expire_unix,
-
+        "token": TOKEN,
+        "accessToken": TOKEN,
+        "tokenExpireUnix": EXPIRE_UNIX,
         "data": {
-            "endtime": expire_unix,
-            "expire": expire_unix,
-            "token": token,
-            "accessToken": token,
-            "kami": "ABC123",
+            "endtime": EXPIRE_UNIX,
+            "expire": EXPIRE_UNIX,
+            "token": TOKEN,
+            "accessToken": TOKEN,
+            "challenge_id": CHALLENGE_ID,
+            "esp_enabled": 1,
             "vip": 1,
             "status": 1
+        }
+    }
+
+
+def challenge_response():
+    return {
+        "code": 1,
+        "status": 1,
+        "ret": 1,
+        "success": True,
+        "msg": "success",
+        "message": "success",
+        "data": {
+            "challenge_id": CHALLENGE_ID,
+            "endtime": EXPIRE_UNIX,
+            "esp_enabled": 1,
+            "token": TOKEN,
+            "accessToken": TOKEN
         }
     }
 
@@ -49,6 +70,18 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_text(self, text, status=200):
+        body = text.encode("utf-8")
+
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_OPTIONS(self):
         self._send_json({"ok": True})
 
@@ -61,28 +94,46 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json({
             "ok": True,
             "server": "bwcj-server",
-            "message": "server running",
-            "code": 1
+            "code": 1,
+            "message": "server running"
         })
 
     def do_POST(self):
         parsed = urlparse(self.path)
+        path = parsed.path.lower()
+
         length = int(self.headers.get("Content-Length", "0") or "0")
         raw_body = self.rfile.read(length)
-
-        try:
-            body_text = raw_body.decode("utf-8", errors="ignore")
-        except Exception:
-            body_text = str(raw_body)
+        body_text = raw_body.decode("utf-8", errors="ignore")
 
         print("========== APP REQUEST ==========", flush=True)
         print("METHOD: POST", flush=True)
         print("PATH:", parsed.path, flush=True)
         print("HEADERS:", dict(self.headers), flush=True)
         print("BODY:", body_text, flush=True)
-        print("========== RESPONSE SUCCESS ==========", flush=True)
 
-        self._send_json(make_success_response())
+        if "challenge" in path:
+            print("========== RESPONSE CHALLENGE ==========", flush=True)
+            self._send_json(challenge_response())
+            return
+
+        if "verify" in path:
+            print("========== RESPONSE VERIFY ENCRYPTED ==========", flush=True)
+            self._send_text(ENCRYPTED_PAYLOAD)
+            return
+
+        if "heartbeat" in path or "hb" in path:
+            print("========== RESPONSE HEARTBEAT ENCRYPTED ==========", flush=True)
+            self._send_text(ENCRYPTED_PAYLOAD)
+            return
+
+        if "activate" in path:
+            print("========== RESPONSE ACTIVATE ==========", flush=True)
+            self._send_json(activate_response())
+            return
+
+        print("========== RESPONSE DEFAULT ==========", flush=True)
+        self._send_json(activate_response())
 
 
 if __name__ == "__main__":
