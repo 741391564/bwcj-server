@@ -9,7 +9,7 @@ TOKEN = "ultimate-token-2099"
 CHALLENGE_ID = "local-challenge-2099"
 
 # 给 verify_v2.php / heartbeat_v2.php 用的加密成功包
-ENCRYPTED_PAYLOAD = "nuPiPJLnihoKYkPguRn9BW+cnzFd91mUfHvoS4bLT/dzlkKrgYtsofA6M8ESooQHhUMzCDhFiZLkOxbvrk++fwLxZnQ2dPJUUnPtvCvDOkaCKun/39XRbBuUJqu5mlM94cUIZzpVCLiV+etI2AaAHg3ECVZHxNWbkekZ3Wjs5RE="
+ENCRYPTED_PAYLOAD = "rT8YCtaQuG5n0lITRAEgfTB0poe4QQ4U/6vo9evHlJuG5gS2i9XTC2d+1iDFntFDbnqvA/EX8VJYL97Sq1J4P0QTE/967A4P5DK30b3LbTI3Sa0ehG6KTGuQwMGU0UaGA+867qSIzAZ0ur/97mELylf/mMblbfLxPOA9U8+mnwE="
 
 
 def activate_response():
