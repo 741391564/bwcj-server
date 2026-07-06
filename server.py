@@ -1,37 +1,11 @@
-from flask import Flask, request, jsonify
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import json
+import os
 import time
-
-app = Flask(__name__)
-
-def log_request():
-    print("========== APP REQUEST ==========", flush=True)
-    print("TIME:", time.strftime("%Y-%m-%d %H:%M:%S"), flush=True)
-    print("METHOD:", request.method, flush=True)
-    print("PATH:", request.path, flush=True)
-    print("FULL_PATH:", request.full_path, flush=True)
-    print("URL:", request.url, flush=True)
-    print("HEADERS:", dict(request.headers), flush=True)
-
-    try:
-        print("JSON:", request.get_json(silent=True), flush=True)
-    except Exception as e:
-        print("JSON_ERROR:", str(e), flush=True)
-
-    try:
-        print("FORM:", request.form.to_dict(), flush=True)
-    except Exception as e:
-        print("FORM_ERROR:", str(e), flush=True)
-
-    try:
-        print("DATA:", request.get_data(as_text=True), flush=True)
-    except Exception as e:
-        print("DATA_ERROR:", str(e), flush=True)
-
-    print("=================================", flush=True)
-
+from urllib.parse import urlparse, parse_qs
 
 def success_response():
-    return jsonify({
+    return {
         "code": 0,
         "status": 1,
         "ret": 0,
@@ -63,66 +37,50 @@ def success_response():
                 "enabled": True
             }
         }
-    })
+    }
 
+class Handler(BaseHTTPRequestHandler):
+    def _handle(self):
+        parsed = urlparse(self.path)
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length).decode("utf-8", errors="ignore") if length > 0 else ""
 
-@app.before_request
-def before_request():
-    log_request()
+        print("========== APP REQUEST ==========", flush=True)
+        print("TIME:", time.strftime("%Y-%m-%d %H:%M:%S"), flush=True)
+        print("METHOD:", self.command, flush=True)
+        print("PATH:", parsed.path, flush=True)
+        print("QUERY:", parse_qs(parsed.query), flush=True)
+        print("HEADERS:", dict(self.headers), flush=True)
+        print("BODY:", body, flush=True)
+        print("=================================", flush=True)
 
+        data = json.dumps(success_response(), ensure_ascii=False).encode("utf-8")
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    return success_response()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
+    def do_GET(self):
+        self._handle()
 
-@app.route("/Auth/iOSVerify/", methods=["GET", "POST"])
-def ios_verify_slash():
-    return success_response()
+    def do_POST(self):
+        self._handle()
 
+    def do_PUT(self):
+        self._handle()
 
-@app.route("/Auth/iOSVerify", methods=["GET", "POST"])
-def ios_verify_no_slash():
-    return success_response()
+    def do_DELETE(self):
+        self._handle()
 
-
-@app.route("/auth/iOSVerify/", methods=["GET", "POST"])
-def ios_verify_lower_auth():
-    return success_response()
-
-
-@app.route("/auth/iosverify/", methods=["GET", "POST"])
-def ios_verify_all_lower():
-    return success_response()
-
-
-@app.route("/api/verify", methods=["GET", "POST"])
-def api_verify():
-    return success_response()
-
-
-@app.route("/verify", methods=["GET", "POST"])
-def verify():
-    return success_response()
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    return success_response()
-
-
-@app.route("/heartbeat", methods=["GET", "POST"])
-def heartbeat():
-    return success_response()
-
-
-@app.route("/<path:any_path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
-def catch_all(any_path):
-    print("CATCH_ALL_PATH:", any_path, flush=True)
-    return success_response()
-
+    def do_OPTIONS(self):
+        self._handle()
 
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", "10000"))
+    print("server running on port", port, flush=True)
+    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
