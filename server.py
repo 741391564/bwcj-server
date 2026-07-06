@@ -1,84 +1,128 @@
-#!/usr/bin/env python3
-"""霸王茶姬 假服务器 v3 ULTIMATE — 适配所有已知API路径"""
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import json, os, time
+from flask import Flask, request, jsonify
+import time
 
-class FakeServer(BaseHTTPRequestHandler):
-    def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "*")
-        self.send_header("Access-Control-Allow-Headers", "*")
+app = Flask(__name__)
 
-    def _json(self, code, body):
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self._cors()
-        self.end_headers()
-        self.wfile.write(json.dumps(body, ensure_ascii=False).encode())
+def log_request():
+    print("========== APP REQUEST ==========", flush=True)
+    print("TIME:", time.strftime("%Y-%m-%d %H:%M:%S"), flush=True)
+    print("METHOD:", request.method, flush=True)
+    print("PATH:", request.path, flush=True)
+    print("FULL_PATH:", request.full_path, flush=True)
+    print("URL:", request.url, flush=True)
+    print("HEADERS:", dict(request.headers), flush=True)
 
-    def do_OPTIONS(self):
-        self.send_response(204)
-        self._cors()
-        self.end_headers()
+    try:
+        print("JSON:", request.get_json(silent=True), flush=True)
+    except Exception as e:
+        print("JSON_ERROR:", str(e), flush=True)
 
-    def do_GET(self):
-        self._handle()
+    try:
+        print("FORM:", request.form.to_dict(), flush=True)
+    except Exception as e:
+        print("FORM_ERROR:", str(e), flush=True)
 
-    def do_POST(self):
-        self._handle()
+    try:
+        print("DATA:", request.get_data(as_text=True), flush=True)
+    except Exception as e:
+        print("DATA_ERROR:", str(e), flush=True)
 
-    def _handle(self):
-        path = self.path
-        cl = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(cl) if cl else b""
-        print(f"\n{'='*50}")
-        print(f"[{self.command}] {path}")
-        print(f"Headers: {dict(self.headers)}")
-        print(f"Body: {body[:1000]}")
-        print(f"{'='*50}\n")
+    print("=================================", flush=True)
 
-        # 核心响应——覆盖所有可能的成功格式
-        now = int(time.time())
-        resp = {
-            # 格式1: code=0表示成功（中文App常用）
-            "code": 0,
-            # 格式2: status字段  
-            "status": 1,
-            # 格式3: ret字段
-            "ret": 0,
-            "msg": "success",
-            "message": "success",
-            # 核心数据
-            "accessToken": "ultimate-token-2099",
-            "token": "ultimate-token-2099",
-            "tokenExpireUnix": now + 999999999,
+
+def success_response():
+    return jsonify({
+        "code": 0,
+        "status": 1,
+        "ret": 0,
+        "msg": "success",
+        "message": "success",
+        "success": True,
+
+        "accessToken": "ultimate-token-2099",
+        "token": "ultimate-token-2099",
+        "tokenExpireUnix": 2783326459,
+
+        "endtime": "2099-12-31",
+        "expire": "2099-12-31",
+        "roomCode": "0000",
+        "udid": "*",
+
+        "data": {
             "endtime": "2099-12-31",
-            "expire": "2099-12-31",
+            "token": "ultimate-token-2099",
+            "accessToken": "ultimate-token-2099",
+            "tokenExpireUnix": 2783326459,
             "roomCode": "0000",
             "udid": "*",
-            "data": {
-                "endtime": "2099-12-31",
-                "token": "ultimate-token-2099",
-                "accessToken": "ultimate-token-2099",
-                "tokenExpireUnix": now + 999999999,
-                "roomCode": "0000",
-                "udid": "*",
-                "expire": "2099-12-31",
-                "features": {
-                    "esp": True,
-                    "radar": True, 
-                    "allMaps": True,
-                    "enabled": True
-                }
+            "expire": "2099-12-31",
+            "features": {
+                "esp": True,
+                "radar": True,
+                "allMaps": True,
+                "enabled": True
             }
         }
-        self._json(200, resp)
+    })
 
-    def log_message(self, fmt, *args):
-        pass  # 用自己的print
+
+@app.before_request
+def before_request():
+    log_request()
+
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    return success_response()
+
+
+@app.route("/Auth/iOSVerify/", methods=["GET", "POST"])
+def ios_verify_slash():
+    return success_response()
+
+
+@app.route("/Auth/iOSVerify", methods=["GET", "POST"])
+def ios_verify_no_slash():
+    return success_response()
+
+
+@app.route("/auth/iOSVerify/", methods=["GET", "POST"])
+def ios_verify_lower_auth():
+    return success_response()
+
+
+@app.route("/auth/iosverify/", methods=["GET", "POST"])
+def ios_verify_all_lower():
+    return success_response()
+
+
+@app.route("/api/verify", methods=["GET", "POST"])
+def api_verify():
+    return success_response()
+
+
+@app.route("/verify", methods=["GET", "POST"])
+def verify():
+    return success_response()
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    return success_response()
+
+
+@app.route("/heartbeat", methods=["GET", "POST"])
+def heartbeat():
+    return success_response()
+
+
+@app.route("/<path:any_path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+def catch_all(any_path):
+    print("CATCH_ALL_PATH:", any_path, flush=True)
+    return success_response()
+
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8899))
-    server = HTTPServer(("0.0.0.0", port), FakeServer)
-    print(f"ULTIMATE 假服 v3 → 0.0.0.0:{port}")
-    server.serve_forever()
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
