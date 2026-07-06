@@ -1,0 +1,2 @@
+# 霸王茶姬假服 - Render
+# No external dependencies needed (pure stdlib)
